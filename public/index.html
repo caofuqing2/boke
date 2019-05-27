@@ -62,10 +62,135 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-iOS面试题整理" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/05/27/iOS面试题整理/" class="article-date">
+  <time datetime="2019-05-27T09:33:20.000Z" itemprop="datePublished">2019-05-27</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/05/27/iOS面试题整理/">iOS面试题整理</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>面试 iOS 开发时，切入点很重要，不同的切入点会导致不同的结果，没有找到合适的切入点也无法对应聘者有一个全面的了解。所以这份面试问题列表更多的是提供方向，没有固定的答案，而且可以根据应聘者的回应引出更多有意思深层次的讨论。</p>
+<p>如果有不错的问题，欢迎联系追加</p>
+<h2 id="一般性问题"><a href="#一般性问题" class="headerlink" title="一般性问题"></a>一般性问题</h2><ul>
+<li>最近这两天你有学到什么知识/技能么？</li>
+<li>最近有做过比较酷或者比较有挑战的项目么？</li>
+<li>最近看过的书/文章有哪些？</li>
+<li>如何向一个只接触过互联网的孩子解释「电视」？</li>
+<li>为什么要学习编程，编程对你而言的乐趣在哪儿？</li>
+<li>如果一个函数10次中有7次正确，3次错误，问题可能出现在哪里？</li>
+<li>自身最大优点是什么，怎么证明？</li>
+<li>有没有在 GitHub 上发布过开源代码，参与过开源项目？</li>
+<li>你最近遇到过的一个技术挑战是什么？怎么解决的？</li>
+<li>开发常用的工具有哪些？</li>
+<li>熟悉 CocoaPods 么？能大概讲一下工作原理么？</li>
+<li>最常用的版本控制工具是什么，能大概讲讲原理么？</li>
+<li>今年你最想掌握的一门技术是什么？为什么？目前已经做到了哪个程度？</li>
+<li>你一般是怎么用 Instruments 的？</li>
+<li>你一般是如何调试 Bug 的？</li>
+<li>你在你的项目中用到了哪些设计模式？</li>
+<li>如何实现单例，单例会有什么弊端？</li>
+<li>iOS 是如何管理内存的？</li>
+</ul>
+<h2 id="知识性问题"><a href="#知识性问题" class="headerlink" title="知识性问题"></a>知识性问题</h2><ul>
+<li>什么是响应链，它是怎么工作的？</li>
+<li>如何访问并修改一个类的私有属性？</li>
+<li>iOS Extension 是什么？能列举几个常用的 Extension 么？</li>
+<li>如何把一个包含自定义对象的数组序列化到磁盘？</li>
+<li>Apple Pay 是什么？它的大概工作流程是怎样的？</li>
+<li>iOS 的沙盒目录结构是怎样的？ App Bundle 里面都有什么？</li>
+<li>iOS 的签名机制大概是怎样的？</li>
+<li>iOS 7的多任务添加了哪两个新的 API? 各自的使用场景是什么？</li>
+<li>Objective-C 的 <code>class</code> 是如何实现的？<code>Selector</code> 是如何被转化为 C 语言的函数调用的？</li>
+<li><code>UIScrollView</code> 大概是如何实现的，它是如何捕捉、响应手势的？</li>
+<li>Objective-C 如何对已有的方法，添加自己的功能代码以实现类似记录日志这样的功能？</li>
+<li><code>+load</code> 和 <code>+initialize</code> 的区别是什么？</li>
+<li>如何让 Category 支持属性？</li>
+<li><code>NSOperation</code> 相比于 GCD 有哪些优势？</li>
+<li><code>strong</code> / <code>weak</code> / <code>unsafe_unretained</code> 的区别？</li>
+<li>如何为 Class 定义一个对外只读对内可读写的属性?</li>
+<li>Objective-C 中，meta-class 指的是什么？</li>
+<li><code>UIView</code> 和 <code>CALayer</code> 之间的关系？</li>
+<li><code>+[UIView animateWithDuration:animations:completion:]</code> 内部大概是如何实现的？</li>
+<li>什么时候会发生「隐式动画」？</li>
+<li>如何处理异步的网络请求？</li>
+<li><code>frame</code> 和 <code>bounds</code> 的区别是什么？</li>
+<li>如何把一张大图缩小为1/4大小的缩略图？</li>
+<li>一个 App 会处于哪些状态？</li>
+<li>Push Notification 是如何工作的？</li>
+<li>什么是 Runloop？</li>
+<li>Toll-Free Bridging 是什么？什么情况下会使用？</li>
+<li>当系统出现内存警告时会发生什么？</li>
+<li>什么是 <code>Protocol</code>，Delegate 一般是怎么用的？</li>
+<li>autorelease 对象在什么情况下会被释放？</li>
+<li>UIWebView 有哪些性能问题？有没有可替代的方案。</li>
+<li>为什么 NotificationCenter 要 removeObserver? 如何实现自动 remove?</li>
+<li>当 <code>TableView</code> 的 <code>Cell</code> 改变时，如何让这些改变以动画的形式呈现？</li>
+<li>什么是 <code>Method Swizzle</code>，什么情况下会使用？</li>
+</ul>
+<h2 id="经验类问题"><a href="#经验类问题" class="headerlink" title="经验类问题"></a>经验类问题</h2><ul>
+<li>为什么 <code>UIScrollView</code> 的滚动会导致 <code>NSTimer</code> 失效？</li>
+<li>为什么当 Core Animation 完成时，layer 又会恢复到原先的状态？</li>
+<li>你会如何存储用户的一些敏感信息，如登录的 token。</li>
+<li>有用过一些开源组件吧，能简单说几个么，大概说说它们的使用场景实现。</li>
+<li>什么时候会发生 <code>EXC BAD ACCESS</code> 异常？</li>
+<li>什么时候会使用 Core Graphics，有什么注意事项么？</li>
+<li>NSNotification 和 KVO 的使用场景？</li>
+<li>使用 Block 时需要注意哪些问题？</li>
+<li><code>performSelector:withObject:afterDelay:</code> 内部大概是怎么实现的，有什么注意事项么？</li>
+<li>如何播放 GIF 图片，有什么优化方案么？</li>
+<li>使用 <code>NSUserDefaults</code> 时，如何处理布尔的默认值？(比如返回 NO，不知道是真的 NO 还是没有设置过)</li>
+<li>有哪几种方式可以对图片进行缩放，使用 CoreGraphics 缩放时有什么注意事项？</li>
+<li>哪些途径可以让 ViewController 瘦下来？</li>
+<li>有哪些常见的 Crash 场景？</li>
+</ul>
+<h2 id="综合类问题"><a href="#综合类问题" class="headerlink" title="综合类问题"></a>综合类问题</h2><ul>
+<li>设计一个可以无限滚动并且支持自动滚动的 SlideShow。</li>
+<li>设计一个进度条。</li>
+<li>设计一套大文件（如上百M的视频）下载方案。</li>
+<li>如果让你来实现 <code>dispatch_once</code>，你会怎么做？</li>
+<li>设计一个类似 iOS 主屏可以下拉出现 Spotlight 的系统。(对 UIScrollView 的理解程度)</li>
+</ul>
+<h2 id="编程实现"><a href="#编程实现" class="headerlink" title="编程实现"></a>编程实现</h2><ul>
+<li>简述<a href="http://en.wikipedia.org/wiki/Snakes_and_Ladders" target="_blank" rel="noopener">「Snakes and Ladders」</a>的实现思路(这道题比较容易阐述清楚，且难度适中)</li>
+</ul>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><ul>
+<li><a href="http://way2ios.com/development/ios-development-2/iphone-interview-question-answers/" target="_blank" rel="noopener">http://way2ios.com/development/ios-development-2/iphone-interview-question-answers/</a></li>
+<li><a href="https://blackpixel.com/writing/2013/04/interview-questions-for-ios-and-mac-developers-1.html" target="_blank" rel="noopener">https://blackpixel.com/writing/2013/04/interview-questions-for-ios-and-mac-developers-1.html</a></li>
+<li><a href="https://github.com/CameronBanga/iOS-Developer-and-Designer-Interview-Questions" target="_blank" rel="noopener">https://github.com/CameronBanga/iOS-Developer-and-Designer-Interview-Questions</a></li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://caofuqing.com/2019/05/27/iOS面试题整理/" data-id="cjw66ry2r00015u04l1r5dqif" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-hello-world" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2019/05/27/hello-world/" class="article-date">
-  <time datetime="2019-05-27T09:03:17.546Z" itemprop="datePublished">2019-05-27</time>
+  <time datetime="2019-05-27T09:08:59.392Z" itemprop="datePublished">2019-05-27</time>
 </a>
     
   </div>
@@ -97,7 +222,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://caofuqing.com/2019/05/27/hello-world/" data-id="cjw65bbrf0000pw04hpazuhp5" class="article-share-link">Share</a>
+      <a data-url="http://caofuqing.com/2019/05/27/hello-world/" data-id="cjw66ry2n00005u047czich4t" class="article-share-link">Share</a>
       
       
     </footer>
@@ -136,6 +261,10 @@
     <h3 class="widget-title">Recent Posts</h3>
     <div class="widget">
       <ul>
+        
+          <li>
+            <a href="/2019/05/27/iOS面试题整理/">iOS面试题整理</a>
+          </li>
         
           <li>
             <a href="/2019/05/27/hello-world/">Hello World caofuqing</a>
