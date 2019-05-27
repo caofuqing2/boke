@@ -87,7 +87,7 @@ tags:
 * 设计一个类似 iOS 主屏可以下拉出现 Spotlight 的系统。(对 UIScrollView 的理解程度)
 
 ## 编程实现
-* 简述[「Snakes and Ladders」](http://en.wikipedia.org/wiki/Snakes_and_Ladders)的实现思路(这道题比较容易阐述清楚，且难度适中)
+* 简述[「Snakes and Ladders」](https://www.jianshu.com/p/2e1b3f54b4f3)的实现思路(这道题比较容易阐述清楚，且难度适中)
 
 ## 参考
 
