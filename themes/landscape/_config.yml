@@ -1,7 +1,9 @@
 # Header
 menu:
   Home: /
+  # Categories: /categories
   Archives: /archives
+  # About: /about
 rss: /atom.xml
 
 # Content

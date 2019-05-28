@@ -70,12 +70,16 @@
       <div class="outer">
         <section id="main">
   
-    <article id="post-成熟的夜间模式方案" class="article article-type-post" itemscope itemprop="blogPost">
+    <article id="post-iOS-源代码分析-Masonry" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
-    <a href="/2019/02/20/成熟的夜间模式方案/" class="article-date">
-  <time datetime="2019-02-20T04:08:14.000Z" itemprop="datePublished">2019-02-20</time>
+    <a href="/2019/05/28/iOS-源代码分析-Masonry/" class="article-date">
+  <time datetime="2019-05-28T09:11:28.000Z" itemprop="datePublished">2019-05-28</time>
 </a>
     
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/iOS/">iOS</a>
+  </div>
+
   </div>
   <div class="article-inner">
     
@@ -84,7 +88,7 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2019/02/20/成熟的夜间模式方案/">成熟的夜间模式方案</a>
+      <a class="article-title" href="/2019/05/28/iOS-源代码分析-Masonry/">iOS 源代码分析 --- Masonry</a>
     </h1>
   
 
@@ -92,78 +96,394 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <p> <a href="https://github.com/Draveness/DKNightVersion" target="_blank" rel="noopener">DKNightVersion</a> 摘自这个框架的设计者。</p>
-<p>其实夜间模式的实现就是相当于<strong>多主题加颜色管理</strong>。而最新版本的 <a href="https://github.com/Draveness/DKNightVersion" target="_blank" rel="noopener">DKNightVersion</a> 已经很好的解决了这个问题。</p>
-<p>在正式介绍目前版本的实现之前，我会先简单介绍一下 1.0 时代的 DKNightVersion 的实现，为各位读者带来一些新的思路，也确实想梳理一下这个框架是如何演变的。</p>
-<blockquote>
-<p>我们会以对 <code>backgroundColor</code> 为例说明整个框架的工作原理。</p>
-</blockquote>
-<p align="center"><br><img src="https://raw.githubusercontent.com/Draveness/DKNightVersion/master/images/DKNightVersion.gif"><br></p>
+        <p><a href="https://github.com/SnapKit/Masonry" target="_blank" rel="noopener">Masonry</a> 是 Objective-C 中用于自动布局的第三方框架, 我们一般使用它来代替冗长, 繁琐的 AutoLayout 代码. </p>
+<p>Masonry 的使用还是很简洁的:<br>
+        
+          </p><p class="article-more-link">
+            <a href="/2019/05/28/iOS-源代码分析-Masonry/#more">Read More</a>
+          </p>
+        
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://caofuqing.com/2019/05/28/iOS-源代码分析-Masonry/" data-id="cjw7mwqpf00001j045e975e5h" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
 
-<h2 id="方法调剂的版本"><a href="#方法调剂的版本" class="headerlink" title="方法调剂的版本"></a>方法调剂的版本</h2><p>如何在不改变原有的架构，甚至不改变原有的代码的基础上，为应用优雅地添加夜间模式成为很多开发者不得不面对的问题。这也是 1.0 时代的 DKNightVersion 想要实现的目标。</p>
-<p>其核心思路就是<strong>使用方法调剂修改 <code>backgroundColor</code> 的存取方法</strong>。</p>
-<h3 id="使用-nightBackgroundColor"><a href="#使用-nightBackgroundColor" class="headerlink" title="使用 nightBackgroundColor"></a>使用 nightBackgroundColor</h3><p>在思考之后，我想到，想要在不改动原有代码的基础上实现夜间模式只能通过在<strong>分类</strong>中添加 <code>nightBackgroundColor</code> 属性，并且使用方法调剂改变 <code>backgroundColor</code> 的 setter 方法。</p>
-<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">- (<span class="keyword">void</span>)hook_setBackgroundColor:(<span class="built_in">UIColor</span>*)backgroundColor &#123;</span><br><span class="line"><span class="keyword">if</span> ([DKNightVersionManager currentThemeVersion] == DKThemeVersionNormal) &#123;</span><br><span class="line">[<span class="keyword">self</span> setNormalBackgroundColor:backgroundColor];</span><br><span class="line">&#125;</span><br><span class="line">[<span class="keyword">self</span> hook_setBackgroundColor:backgroundColor];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>在当前主题为 <code>DKThemeVersionNormal</code> 时，将颜色保存至 <code>normalBackgroundColor</code> 中，然后再调用原 <code>backgroundColor</code> 的 setter 方法，更新视图的颜色。</p>
-<h3 id="DKNightVersionManager"><a href="#DKNightVersionManager" class="headerlink" title="DKNightVersionManager"></a>DKNightVersionManager</h3><p>这里只解决了颜色设置的问题，下面会说明，如果在主题改变时，实时更新颜色，而不用重新进入当前页面。</p>
-<p>整个 DKNightVersion 都是由一个 <code>DKNightVersionManager</code> 的单例来管理的，而它的主要工作就是负责<strong>改变应用的主题</strong>、并在主题改变时<strong>通知其它视图更新颜色</strong>：</p>
-<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">- (<span class="keyword">void</span>)changeColor:(<span class="keyword">id</span> &lt;DKNightVersionChangeColorProtocol&gt;)object &#123;</span><br><span class="line"><span class="keyword">if</span> ([object respondsToSelector:<span class="keyword">@selector</span>(changeColor)]) &#123;</span><br><span class="line">[object changeColor];</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">if</span> ([object respondsToSelector:<span class="keyword">@selector</span>(subviews)]) &#123;</span><br><span class="line"><span class="keyword">if</span> (![object subviews]) &#123;</span><br><span class="line"><span class="comment">// Basic case, do nothing.</span></span><br><span class="line"><span class="keyword">return</span>;</span><br><span class="line">&#125; <span class="keyword">else</span> &#123;</span><br><span class="line"><span class="keyword">for</span> (<span class="keyword">id</span> subview <span class="keyword">in</span> [object subviews]) &#123;</span><br><span class="line"><span class="comment">// recursive darken all the subviews of current view.</span></span><br><span class="line">[<span class="keyword">self</span> changeColor:subview];</span><br><span class="line"><span class="keyword">if</span> ([subview respondsToSelector:<span class="keyword">@selector</span>(changeColor)]) &#123;</span><br><span class="line">[subview changeColor];</span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>如果主题更新，那么就会递归地调用 <code>changeColor</code> 方法，刷新全部的视图颜色，而这个方法的实现比较简单：</p>
-<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">- (<span class="keyword">void</span>)changeColor &#123;</span><br><span class="line"><span class="keyword">if</span> ([DKNightVersionManager currentThemeVersion] == DKThemeVersionNormal) &#123;</span><br><span class="line"><span class="keyword">self</span>.backgroundColor = <span class="keyword">self</span>.normalBackgroundColor;</span><br><span class="line">&#125; <span class="keyword">else</span> &#123;</span><br><span class="line"><span class="keyword">self</span>.backgroundColor = <span class="keyword">self</span>.nightBackgroundColor;</span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>上面就是整个框架在 1.0 版本时的实现思路。不过这个版本的 DKNightVersion 在实际应用中会有比较多的问题：</p>
-<ol>
-<li>在高速滚动的 <code>scrollView</code> 上面来回切换夜间模式，会出现颜色错乱的问题</li>
-<li>由于对 <code>backgroundColor</code> 属性进行<strong>不合适的</strong>方法调剂，其行为无法预测，比如：在设置颜色后，再取出，不一定与设置时传入的颜色相同</li>
-<li>无法适配第三方 UI 控件</li>
+
+  
+    <article id="post-javascript-十一" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/03/21/javascript-十一/" class="article-date">
+  <time datetime="2019-03-21T08:43:56.000Z" itemprop="datePublished">2019-03-21</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/JavaScript/">JavaScript</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/03/21/javascript-十一/">javascript(十一)</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="作用域【scope】"><a href="#作用域【scope】" class="headerlink" title="作用域【scope】"></a>作用域【scope】</h2><blockquote>
+<p>一段程序代码中所用到的数据并不总是有效/可用的，而限定这个数据的可用性的代码范围就是这个名字的作用域。【一条数据可以在哪个范围中使用】</p>
+</blockquote>
+<ul>
+<li>作用域的使用提高了程序逻辑的局部性，增强程序的可靠性，减少名字冲突</li>
+<li>一个变量是全局变量，还是局部变量主要来看变量声明的位置,==声明在函数内部，就是这个函数的局部变量.==</li>
+<li>在js的ECMAScript5.1中，只有函数可以产生作用域</li>
+<li>当我们声明一个函数的时候，同时该函数就会创建一个属性这个属性是<a href="作用域">[Scopes]</a>,我们在这个函数中 声明的变量都会被存入这个函数的[[Scopes]]属性中</li>
+</ul>
+<p>函数外部的变量不可以访问函数内部的局部变量数据。<br>
+        
+          </p><p class="article-more-link">
+            <a href="/2019/03/21/javascript-十一/#more">Read More</a>
+          </p>
+        
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://caofuqing.com/2019/03/21/javascript-十一/" data-id="cjw7mwqq6000p1j049t90u8gx" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-javascript-十" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/03/21/javascript-十/" class="article-date">
+  <time datetime="2019-03-21T08:43:55.000Z" itemprop="datePublished">2019-03-21</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/JavaScript/">JavaScript</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/03/21/javascript-十/">javascript(十)</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="练习讲解"><a href="#练习讲解" class="headerlink" title="练习讲解"></a>练习讲解</h2><h3 id="console-time"><a href="#console-time" class="headerlink" title="console.time();"></a>console.time();</h3><blockquote>
+<p>打印执行时间</p>
+</blockquote>
+<h4 id="注意：操作了元素的innerHTML之后，元素子元素上的所有js事件都会失效，除非写的是行间事件。"><a href="#注意：操作了元素的innerHTML之后，元素子元素上的所有js事件都会失效，除非写的是行间事件。" class="headerlink" title="注意：操作了元素的innerHTML之后，元素子元素上的所有js事件都会失效，除非写的是行间事件。"></a>注意：操作了元素的innerHTML之后，元素子元素上的所有js事件都会失效，除非写的是行间事件。</h4><h2 id="函数"><a href="#函数" class="headerlink" title="函数"></a>函数</h2><blockquote>
+<p>在实际编码中，会有很多的一些代码可能重复出现，为了能简化程序开发，重复利用，所以有了函数的概念。(function功能方法，把一个个零散的带吗和数据，组合成一个完整的方法)</p>
+</blockquote>
+<p>定义函数<br>
+        
+          </p><p class="article-more-link">
+            <a href="/2019/03/21/javascript-十/#more">Read More</a>
+          </p>
+        
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://caofuqing.com/2019/03/21/javascript-十/" data-id="cjw7mwqq5000m1j04oez5rt0g" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-javascript-九" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/03/21/javascript-九/" class="article-date">
+  <time datetime="2019-03-21T08:43:54.000Z" itemprop="datePublished">2019-03-21</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/JavaScript/">JavaScript</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/03/21/javascript-九/">javascript(九)</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="运算符"><a href="#运算符" class="headerlink" title="运算符"></a>运算符</h2><ul>
+<li>1.赋值运算符</li>
+<li>=、+=、-=、*=、/=、%=</li>
+<li>2.算数运算符：运算符都只有数字运算的功能，所以在使用的时候，都会把其他类型专程数字。</li>
+<li>“+”</li>
+<li>1.当加号左右两侧有一位是字符串时，会把另外一侧也转成字符串</li>
+<li>2.使用+号时，两边没有字符串时，优先尝试把左右两侧都转成数字，如果不能转换成数字就转换成字符串进行链接。</li>
+<li>“-“</li>
+<li>“*”</li>
+<li>“/“</li>
+<li>“%”：取模等于求余数【任何数%n = (0 ~ n-1)】</li>
+<li>++</li>
+<li>“–”</li>
+<li>注意：
+        
+          <p class="article-more-link">
+            <a href="/2019/03/21/javascript-九/#more">Read More</a>
+          </p>
+        
+      
+    </li></ul></div>
+    <footer class="article-footer">
+      <a data-url="http://caofuqing.com/2019/03/21/javascript-九/" data-id="cjw7mwqpv000a1j046c9ye40l" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-javascript-八" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/03/21/javascript-八/" class="article-date">
+  <time datetime="2019-03-21T08:43:53.000Z" itemprop="datePublished">2019-03-21</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/JavaScript/">JavaScript</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/03/21/javascript-八/">javascript(八)</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="ECMAScript"><a href="#ECMAScript" class="headerlink" title="ECMAScript"></a>ECMAScript</h2><h2 id="数据类型划分"><a href="#数据类型划分" class="headerlink" title="数据类型划分"></a>数据类型划分</h2><h4 id="1、标准指定的类型划分："><a href="#1、标准指定的类型划分：" class="headerlink" title="1、标准指定的类型划分："></a>1、标准指定的类型划分：</h4><ul>
+<li>基本类型：</li>
+<li>1.number（数字）</li>
+<li>2.string（字符串）</li>
+<li>3.undefined（未定义）</li>
+<li>4.boolean（布尔值）</li>
+<li><p>5.null（空对象）找不到对象，对象未定义。与非空对象最大区别在于是否能进行属性操作。</p>
+        
+          <p class="article-more-link">
+            <a href="/2019/03/21/javascript-八/#more">Read More</a>
+          </p>
+        
+      
+    </li></ul></div>
+    <footer class="article-footer">
+      <a data-url="http://caofuqing.com/2019/03/21/javascript-八/" data-id="cjw7mwqq1000h1j049a26ucgw" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-javascript-七" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/03/21/javascript-七/" class="article-date">
+  <time datetime="2019-03-21T08:43:52.000Z" itemprop="datePublished">2019-03-21</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/JavaScript/">JavaScript</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/03/21/javascript-七/">javascript(七)</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="第一章复习"><a href="#第一章复习" class="headerlink" title="第一章复习"></a>第一章复习</h2><h3 id="1-获取元素的方法"><a href="#1-获取元素的方法" class="headerlink" title="1.获取元素的方法"></a>1.获取元素的方法</h3><ul>
+<li>获取单个元素：</li>
+<li>document.getElementById(‘idName’);//只能从document获取</li>
+<li>document.querySelector(‘cssSelector’);//可以从父级获取</li>
+<li>获取一组元素//都可以从父级获取</li>
+<li>document.querySelectorAll(‘cssSelector’);</li>
+<li>document.getElementsByTagName(‘tagName’);</li>
+<li>document.getElementsByClassName(‘className’);</li>
+<li>query和get方法的区别：</li>
+<li>query方法只会在声明的时候，获取一次。</li>
+<li>get方法每次使用的时候，都会获取一次。
+        
+          <p class="article-more-link">
+            <a href="/2019/03/21/javascript-七/#more">Read More</a>
+          </p>
+        
+      
+    </li></ul></div>
+    <footer class="article-footer">
+      <a data-url="http://caofuqing.com/2019/03/21/javascript-七/" data-id="cjw7mwqpr00071j0491zxqfcn" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-javascript-六" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/03/21/javascript-六/" class="article-date">
+  <time datetime="2019-03-21T08:43:51.000Z" itemprop="datePublished">2019-03-21</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/JavaScript/">JavaScript</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/03/21/javascript-六/">javascript(六)</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="获取方式区分："><a href="#获取方式区分：" class="headerlink" title="获取方式区分："></a>获取方式区分：</h2><ol>
+<li>query相关的方法，再使用时就只获取一次。</li>
+<li>get方法在每次我们调用的时候，都会重新获取一次。</li>
 </ol>
-<h2 id="使用色表的版本"><a href="#使用色表的版本" class="headerlink" title="使用色表的版本"></a>使用色表的版本</h2><p>为了解决 1.0 中的各种问题，我决定在 2.0 版本中放弃对 <code>nightBackgroundColor</code> 的使用，并且重新设计底层的实现，转而使用更为<strong>稳定</strong>、<strong>安全</strong>的方法实现夜间模式，先看一下效果图：</p>
-<p align="center"><br><img src="https://raw.githubusercontent.com/Draveness/DKNightVersion/master/images/DKNightVersion.gif"><br></p><br><p align="center"><br><em>新的实现不仅能够支持夜间模式，而且能够支持多主题。</em><br></p>
+<h2 id="onclick清空"><a href="#onclick清空" class="headerlink" title="onclick清空"></a>onclick清空</h2><p>box.onclick = null//把box的onclick事件变成空对象。</p>
+<h2 id="索引"><a href="#索引" class="headerlink" title="索引"></a>索引</h2><ul>
+<li>定义一个元素本来不存在的属性，自定义属性。
+        
+          <p class="article-more-link">
+            <a href="/2019/03/21/javascript-六/#more">Read More</a>
+          </p>
+        
+      
+    </li></ul></div>
+    <footer class="article-footer">
+      <a data-url="http://caofuqing.com/2019/03/21/javascript-六/" data-id="cjw7mwqq2000i1j04xzwxeqie" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
 
-<h3 id="DKColorPicker"><a href="#DKColorPicker" class="headerlink" title="DKColorPicker"></a>DKColorPicker</h3><p>与上一个版本实现上的不同，在 2.0 中删除了全部的 <code>nightBackgroundColor</code>，使用一个名为 <code>dk_backgroundColorPicker</code> 的属性取代它。</p>
-<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">@property</span> (<span class="keyword">nonatomic</span>, <span class="keyword">copy</span>) DKColorPicker dk_backgroundColorPicker;</span><br></pre></td></tr></table></figure>
-<p>这个属性其实就是一个 block，它接收参数 <code>DKThemeVersion *themeVersion</code>，但是会返回一个 <code>UIColor *</code>：</p>
-<blockquote>
-<p>在第一次传入 picker 或者每次主题改变时，都会将当前主题 <code>DKThemeVersion</code> 传入 picker 并执行，然后，将得到的 <code>UIColor</code> 赋值给对应的属性 <code>backgroundColor</code> 更新视图颜色。</p>
-</blockquote>
-<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="built_in">UIColor</span> *(^DKColorPicker)(DKThemeVersion *themeVersion);</span><br></pre></td></tr></table></figure>
-<p>比如下面使用 <code>DKColorPickerWithRGB</code> 创建一个临时的 <code>DKColorPicker</code>：</p>
+
+  
+    <article id="post-javascript-五" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/03/21/javascript-五/" class="article-date">
+  <time datetime="2019-03-21T08:43:50.000Z" itemprop="datePublished">2019-03-21</time>
+</a>
+    
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/JavaScript/">JavaScript</a>
+  </div>
+
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/03/21/javascript-五/">javascript(五)</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="for循环"><a href="#for循环" class="headerlink" title="for循环"></a>for循环</h2><ul>
+<li>什么时候使用for循环？</li>
+<li>当我们需要同时处理一组数据得时候，就需要使用循环</li>
+<li>需要什么？</li>
+</ul>
 <ol>
-<li>在 <code>DKThemeVersionNormal</code> 时返回 <code>0xffffff</code></li>
-<li>在 <code>DKThemeVersionNight</code> 时返回 <code>0x343434</code></li>
-<li>在自定义的主题下返回 <code>0xfafafa</code> （这里的顺序与色表中主题的顺序有关）</li>
+<li>起始值</li>
+<li>判断条件</li>
+<li>执行语句</li>
+<li>自增</li>
 </ol>
-<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cell.dk_backgroundColorPicker = DKColorPickerWithRGB(<span class="number">0xffffff</span>, <span class="number">0x343434</span>, <span class="number">0xfafafa</span>);</span><br></pre></td></tr></table></figure>
-<p>同时，每一个对象还持有一个 <code>pickers</code> 数组，来存储自己的全部 <code>DKColorPicker</code>：</p>
-<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">@interface</span> <span class="title">NSObject</span> ()</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">@property</span> (<span class="keyword">nonatomic</span>, <span class="keyword">strong</span>) <span class="built_in">NSMutableDictionary</span>&lt;<span class="built_in">NSString</span> *, DKColorPicker&gt; *pickers;</span><br><span class="line"></span><br><span class="line"><span class="keyword">@end</span></span><br></pre></td></tr></table></figure>
-<p>在第一次使用这个属性时，当前对象注册为 <code>DKNightVersionThemeChangingNotificaiton</code> 通知的观察者。</p>
-<p>在每次收到通知时，都会调用 <code>night_update</code> 方法，将当前主题传入 <code>DKColorPicker</code>，并再次执行，并将结果传入对应的属性 <code>[self performSelector:sel withObject:result]</code>。</p>
-<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">- (<span class="keyword">void</span>)night_updateColor &#123;</span><br><span class="line">[<span class="keyword">self</span>.pickers enumerateKeysAndObjectsUsingBlock:^(<span class="built_in">NSString</span> * _Nonnull selector, DKColorPicker  _Nonnull picker, <span class="built_in">BOOL</span> * _Nonnull stop) &#123;</span><br><span class="line">SEL sel = <span class="built_in">NSSelectorFromString</span>(selector);</span><br><span class="line"><span class="keyword">id</span> result = picker(<span class="keyword">self</span>.dk_manager.themeVersion);</span><br><span class="line">[<span class="built_in">UIView</span> animateWithDuration:DKNightVersionAnimationDuration</span><br><span class="line">animations:^&#123;</span><br><span class="line"><span class="meta">#pragma clang diagnostic push</span></span><br><span class="line"><span class="meta">#pragma clang diagnostic ignored <span class="meta-string">"-Warc-performSelector-leaks"</span></span></span><br><span class="line">[<span class="keyword">self</span> performSelector:sel withObject:result];</span><br><span class="line"><span class="meta">#pragma clang diagnostic pop</span></span><br><span class="line">&#125;];</span><br><span class="line">&#125;];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>也就是说，在每次改变主题的时候，都会发出通知。</p>
-<h3 id="DKColorTable"><a href="#DKColorTable" class="headerlink" title="DKColorTable"></a>DKColorTable</h3><p>虽然我们在上面临时创建了一些 <code>DKColorPicker</code>。不过在 <code>DKNightVersion</code> 中，我更推荐使用色表，来减少相同的 <code>DKColorPicker</code> 的创建，并且能够更好地管理整个应用中的颜色：</p>
-<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">NORMAL   NIGHT    RED</span><br><span class="line"><span class="meta">#ffffff  #343434  #fafafa BG</span></span><br><span class="line"><span class="meta">#aaaaaa  #313131  #aaaaaa SEP</span></span><br><span class="line"><span class="meta">#0000ff  #ffffff  #fa0000 TINT</span></span><br><span class="line"><span class="meta">#000000  #ffffff  #000000 TEXT</span></span><br><span class="line"><span class="meta">#ffffff  #444444  #ffffff BAR</span></span><br></pre></td></tr></table></figure>
-<p>上面就是默认色表文件 <code>DKColorTable.txt</code> 中的内容，其中，第一行表示主题，<code>NORMAL</code> 主题必须存在，而且必须为第一列，而最右面的 <code>BG</code>、<code>SEP</code> 就是对应 <code>DKColorPicker</code> 的 key。</p>
-<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">self</span>.tableView.dk_backgroundColorPicker =  DKColorPickerWithKey(BG);</span><br></pre></td></tr></table></figure>
-<p>在使用时，上面的代码就相当于返回了一个在 <code>NORMAL</code> 时返回 <code>#ffffff</code>、<code>NIGHT</code> 时返回 <code>#343434</code> 以及 <code>RED</code> 时返回 <code>#fafafa</code> 的 <code>DKColorPicker</code>。</p>
-<h3 id="pickerify"><a href="#pickerify" class="headerlink" title="pickerify"></a>pickerify</h3><p>虽然说，我们使用色表以及 <code>DKColorPicker</code> 解决了，但是，到目前为止我们还没有解决第三方框架的问题。</p>
-<p>比如我们使用了某个第三方框架，或者自己添加了某个 <code>color</code> 属性，比如说：</p>
-<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">@interface</span> <span class="title">DKView</span> ()</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">@property</span> (<span class="keyword">nonatomic</span>, <span class="keyword">strong</span>) <span class="built_in">UIColor</span> *weirdColor;</span><br><span class="line"></span><br><span class="line"><span class="keyword">@end</span></span><br></pre></td></tr></table></figure>
-<p><code>weirdColor</code> 并没有对应的 <code>DKColorPicker</code>，但是，我们可以通过 <code>pickerify</code> 在想要使用 <code>dk_weirdColorPicker</code> 的地方生成这个对应的 picker：</p>
-<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">@pickerify(DKView, weirdColor);</span><br></pre></td></tr></table></figure>
-<p>然后，我们就可以使用 <code>dk_weirdColorPicker</code> 属性了：</p>
-<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">view.dk_weirdColorPicker = DKColorPickerWithKey(BG);</span><br></pre></td></tr></table></figure>
-<p><code>pickerify</code> 其实是一个宏：</p>
-<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#define pickerify(KLASS, PROPERTY) interface \</span></span><br><span class="line">KLASS (Night) \</span><br><span class="line"><span class="keyword">@property</span> (<span class="keyword">nonatomic</span>, <span class="keyword">copy</span>, <span class="keyword">setter</span> = dk_set <span class="meta">## PROPERTY ## Picker:) DKColorPicker dk_ ## PROPERTY ## Picker; \</span></span><br><span class="line"><span class="keyword">@end</span> \</span><br><span class="line"><span class="class"><span class="keyword">@interface</span> \</span></span><br><span class="line">KLASS () \</span><br><span class="line"><span class="keyword">@property</span> (<span class="keyword">nonatomic</span>, <span class="keyword">strong</span>) <span class="built_in">NSMutableDictionary</span>&lt;<span class="built_in">NSString</span> *, DKColorPicker&gt; *pickers; \</span><br><span class="line"><span class="keyword">@end</span> \</span><br><span class="line"><span class="class"><span class="keyword">@implementation</span> \</span></span><br><span class="line">KLASS (Night) \</span><br><span class="line">- (DKColorPicker)dk_ <span class="meta">## PROPERTY ## Picker &#123; \</span></span><br><span class="line"><span class="keyword">return</span> objc_getAssociatedObject(<span class="keyword">self</span>, <span class="keyword">@selector</span>(dk_ <span class="meta">## PROPERTY ## Picker)); \</span></span><br><span class="line">&#125; \</span><br><span class="line">- (<span class="keyword">void</span>)dk_set <span class="meta">## PROPERTY ## Picker:(DKColorPicker)picker &#123; \</span></span><br><span class="line">objc_setAssociatedObject(<span class="keyword">self</span>, <span class="keyword">@selector</span>(dk_ <span class="meta">## PROPERTY ## Picker), picker, OBJC_ASSOCIATION_COPY_NONATOMIC); \</span></span><br><span class="line">[<span class="keyword">self</span> setValue:picker(<span class="keyword">self</span>.dk_manager.themeVersion) forKeyPath:@keypath(<span class="keyword">self</span>, PROPERTY)];\</span><br><span class="line">[<span class="keyword">self</span>.pickers setValue:[picker <span class="keyword">copy</span>] forKey:_DKSetterWithPROPERTYerty(@<span class="meta">#PROPERTY)]; \</span></span><br><span class="line">&#125; \</span><br><span class="line"><span class="keyword">@end</span></span><br></pre></td></tr></table></figure>
-<p>这个宏根据传入的类和属性名，为我们生成了对应 <code>picker</code> 的存取方法，它也可以说是一种元编程的手段。</p>
-<blockquote>
-<p>这里生成的 setter 方法不是标准意义上的驼峰命名法 <code>dk_setweirdColorPicker:</code>，因为我不知道怎么才能让大写首字母之后的属性添加到这里（如果各位读者有解决方案，欢迎提 PR 或者 issue）。</p>
-</blockquote>
-<h2 id="嵌入式-Ruby"><a href="#嵌入式-Ruby" class="headerlink" title="嵌入式 Ruby"></a>嵌入式 Ruby</h2><p>由于框架中很多的代码，都是重复的，所以在这里使用了<strong>嵌入式 Ruby 模板</strong>来生成对应的文件 <code>color.m.irb</code>：</p>
-<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="comment">//  &lt;%= klass.name %&gt;+Night.m</span></span><br><span class="line"><span class="comment">//  &lt;%= klass.name %&gt;+Night</span></span><br><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="comment">//  Copyright (c) 2015 Draveness. All rights reserved.</span></span><br><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="comment">//  These files are generated by ruby script, if you want to modify code</span></span><br><span class="line"><span class="comment">//  in this file, you are supposed to update the ruby code, run it and</span></span><br><span class="line"><span class="comment">//  test it. And finally open a pull request.</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#import <span class="meta-string">"&lt;%= klass.name %&gt;+Night.h"</span></span></span><br><span class="line"><span class="meta">#import <span class="meta-string">"DKNightVersionManager.h"</span></span></span><br><span class="line"><span class="meta">#import <span class="meta-string">&lt;objc/runtime.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">@interface</span> &lt;%= <span class="title">klass</span>.<span class="title">name</span> %&gt; ()</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">@property</span> (<span class="keyword">nonatomic</span>, <span class="keyword">strong</span>) <span class="built_in">NSMutableDictionary</span>&lt;<span class="built_in">NSString</span> *, DKColorPicker&gt; *pickers;</span><br><span class="line"></span><br><span class="line"><span class="keyword">@end</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">@implementation</span> &lt;%= <span class="title">klass</span>.<span class="title">name</span> %&gt; (<span class="title">Night</span>)</span></span><br><span class="line"></span><br><span class="line">&lt;% klass.properties.each <span class="keyword">do</span> |property| %&gt;&lt;%= <span class="string">""</span><span class="string">"</span></span><br><span class="line"><span class="string">- (DKColorPicker)dk_#&#123;property.name&#125;Picker &#123;</span></span><br><span class="line"><span class="string">return objc_getAssociatedObject(self, @selector(dk_#&#123;property.name&#125;Picker));</span></span><br><span class="line"><span class="string">&#125;</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">- (void)dk_set#&#123;property.cap_name&#125;Picker:(DKColorPicker)picker &#123;</span></span><br><span class="line"><span class="string">objc_setAssociatedObject(self, @selector(dk_#&#123;property.name&#125;Picker), picker, OBJC_ASSOCIATION_COPY_NONATOMIC);</span></span><br><span class="line"><span class="string">self.#&#123;property.name&#125; = picker(self.dk_manager.themeVersion);</span></span><br><span class="line"><span class="string">[self.pickers setValue:[picker copy] forKey:@\"#&#123;property.setter&#125;\"];</span></span><br><span class="line"><span class="string">&#125;</span></span><br><span class="line"><span class="string">"</span><span class="string">""</span> %&gt;&lt;% end %&gt;</span><br><span class="line"></span><br><span class="line"><span class="keyword">@end</span></span><br></pre></td></tr></table></figure>
-
+<ul>
+<li>写法：
+        
+          <p class="article-more-link">
+            <a href="/2019/03/21/javascript-五/#more">Read More</a>
+          </p>
+        
       
-    </div>
+    </li></ul></div>
     <footer class="article-footer">
-      <a data-url="http://caofuqing.com/2019/02/20/成熟的夜间模式方案/" data-id="cjw7ahwoc00028r04rrsd8r9x" class="article-share-link">Share</a>
+      <a data-url="http://caofuqing.com/2019/03/21/javascript-五/" data-id="cjw7mwqpw000d1j04inslvkgs" class="article-share-link">Share</a>
       
       
     </footer>
@@ -173,12 +493,16 @@
 
 
   
-    <article id="post-iOS对象是如何初始化的" class="article article-type-post" itemscope itemprop="blogPost">
+    <article id="post-javascript-四" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
-    <a href="/2018/11/18/iOS对象是如何初始化的/" class="article-date">
-  <time datetime="2018-11-17T23:25:53.000Z" itemprop="datePublished">2018-11-18</time>
+    <a href="/2019/03/21/javascript-四/" class="article-date">
+  <time datetime="2019-03-21T08:43:49.000Z" itemprop="datePublished">2019-03-21</time>
 </a>
     
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/JavaScript/">JavaScript</a>
+  </div>
+
   </div>
   <div class="article-inner">
     
@@ -187,7 +511,7 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2018/11/18/iOS对象是如何初始化的/">iOS对象是如何初始化的</a>
+      <a class="article-title" href="/2019/03/21/javascript-四/">javascript(四)</a>
     </h1>
   
 
@@ -195,43 +519,25 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <p><code>+ alloc</code> 和 <code>- init</code> 这一对我们在 iOS 开发中每天都要用到的初始化方法一直困扰着我, 于是笔者仔细研究了一下 objc 源码中 <code>NSObject</code> 如何进行初始化。</p>
-<p>在具体分析对象的初始化过程之前，我想先放出结论，以免文章中的细枝末节对读者的理解有所影响；整个对象的初始化过程其实只是<strong>为一个分配内存空间，并且初始化 isa_t 结构体的过程</strong>。</p>
-<h2 id="alloc-方法分析"><a href="#alloc-方法分析" class="headerlink" title="alloc 方法分析"></a>alloc 方法分析</h2><p>先来看一下 <code>+ alloc</code> 方法的调用栈(在调用栈中省略了很多不必要的方法的调用):</p>
-<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">id</span> _objc_rootAlloc(Class cls)</span><br><span class="line">└── <span class="keyword">static</span> <span class="keyword">id</span> callAlloc(Class cls, <span class="keyword">bool</span> checkNil, <span class="keyword">bool</span> allocWithZone=<span class="literal">false</span>)</span><br><span class="line">└── <span class="keyword">id</span> class_createInstance(Class cls, size_t extraBytes)</span><br><span class="line">└── <span class="keyword">id</span> _class_createInstanceFromZone(Class cls, size_t extraBytes, <span class="keyword">void</span> *zone, <span class="keyword">bool</span> cxxConstruct, size_t *outAllocatedSize)</span><br><span class="line">├── size_t instanceSize(size_t extraBytes)</span><br><span class="line">├── <span class="keyword">void</span>    *calloc(size_t, size_t)</span><br><span class="line">└── <span class="keyword">inline</span> <span class="keyword">void</span> objc_object::initInstanceIsa(Class cls, <span class="keyword">bool</span> hasCxxDtor)</span><br></pre></td></tr></table></figure>
-<p>这个调用栈中的方法涉及了多个文件中的代码，在下面的章节中会对调用的方法逐步进行分析，如果这个调用栈让你觉得很头疼，也不是什么问题。</p>
-<h3 id="alloc-的实现"><a href="#alloc-的实现" class="headerlink" title="alloc 的实现"></a>alloc 的实现</h3><figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">+ (<span class="keyword">id</span>)alloc &#123;</span><br><span class="line"><span class="keyword">return</span> _objc_rootAlloc(<span class="keyword">self</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p><code>alloc</code> 方法的实现真的是非常的简单, 它直接调用了另一个私有方法 <code>id _objc_rootAlloc(Class cls)</code></p>
-<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">id</span> _objc_rootAlloc(Class cls) &#123;</span><br><span class="line"><span class="keyword">return</span> callAlloc(cls, <span class="literal">false</span><span class="comment">/*checkNil*/</span>, <span class="literal">true</span><span class="comment">/*allocWithZone*/</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>这就是上帝类 <code>NSObject</code> 对 <code>callAlloc</code> 的实现，我们省略了非常多的代码，展示了最常见的执行路径：</p>
-<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="keyword">id</span> callAlloc(Class cls, <span class="keyword">bool</span> checkNil, <span class="keyword">bool</span> allocWithZone=<span class="literal">false</span>) &#123;</span><br><span class="line"><span class="keyword">id</span> obj = class_createInstance(cls, <span class="number">0</span>);</span><br><span class="line"><span class="keyword">return</span> obj;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">id</span> class_createInstance(Class cls, size_t extraBytes) &#123;</span><br><span class="line"><span class="keyword">return</span> _class_createInstanceFromZone(cls, extraBytes, <span class="literal">nil</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>对象初始化中最重要的操作都在 <code>_class_createInstanceFromZone</code> 方法中执行：</p>
-<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="keyword">id</span> _class_createInstanceFromZone(Class cls, size_t extraBytes, <span class="keyword">void</span> *zone, <span class="keyword">bool</span> cxxConstruct = <span class="literal">true</span>, size_t *outAllocatedSize = <span class="literal">nil</span>) &#123;</span><br><span class="line">size_t size = cls-&gt;instanceSize(extraBytes);</span><br><span class="line"></span><br><span class="line"><span class="keyword">id</span> obj = (<span class="keyword">id</span>)calloc(<span class="number">1</span>, size);</span><br><span class="line"><span class="keyword">if</span> (!obj) <span class="keyword">return</span> <span class="literal">nil</span>;</span><br><span class="line">obj-&gt;initInstanceIsa(cls, hasCxxDtor);</span><br><span class="line"></span><br><span class="line"><span class="keyword">return</span> obj;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h3 id="对象的大小"><a href="#对象的大小" class="headerlink" title="对象的大小"></a>对象的大小</h3><p>在使用 <code>calloc</code> 为对象分配一块内存空间之前，我们要先获取对象在内存的大小：</p>
-<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">size_t instanceSize(size_t extraBytes) &#123;</span><br><span class="line">size_t size = alignedInstanceSize() + extraBytes;</span><br><span class="line"><span class="keyword">if</span> (size &lt; <span class="number">16</span>) size = <span class="number">16</span>;</span><br><span class="line"><span class="keyword">return</span> size;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">uint32_t alignedInstanceSize() &#123;</span><br><span class="line"><span class="keyword">return</span> word_align(unalignedInstanceSize());</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">uint32_t unalignedInstanceSize() &#123;</span><br><span class="line">assert(isRealized());</span><br><span class="line"><span class="keyword">return</span> data()-&gt;ro-&gt;instanceSize;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>实例大小 <code>instanceSize</code> 会存储在类的 <code>isa_t</code> 结构体中，然后经过对齐最后返回。</p>
-<blockquote>
-<p>Core Foundation 需要所有的对象的大小都必须大于或等于 16 字节。</p>
-</blockquote>
-<p>在获取对象大小之后，直接调用 <code>calloc</code> 函数就可以为对象分配内存空间了。</p>
-<h3 id="isa-的初始化"><a href="#isa-的初始化" class="headerlink" title="isa 的初始化"></a>isa 的初始化</h3><p>在对象的初始化过程中除了使用 <code>calloc</code> 来分配内存之外，还需要根据类初始化 <code>isa_t</code> 结构体：</p>
-<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">inline</span> <span class="keyword">void</span> objc_object::initIsa(Class cls, <span class="keyword">bool</span> indexed, <span class="keyword">bool</span> hasCxxDtor) &#123; </span><br><span class="line"><span class="keyword">if</span> (!indexed) &#123;</span><br><span class="line">isa.cls = cls;</span><br><span class="line">&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">isa.bits = ISA_MAGIC_VALUE;</span><br><span class="line">isa.has_cxx_dtor = hasCxxDtor;</span><br><span class="line">isa.shiftcls = (uintptr_t)cls &gt;&gt; <span class="number">3</span>;</span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>上面的代码只是对 <code>isa_t</code> 结构体进行初始化而已：</p>
-<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">union</span> isa_t &#123;</span><br><span class="line">isa_t() &#123; &#125;</span><br><span class="line">isa_t(uintptr_t value) : bits(value) &#123; &#125;</span><br><span class="line"></span><br><span class="line">Class cls;</span><br><span class="line">uintptr_t bits;</span><br><span class="line"></span><br><span class="line"><span class="keyword">struct</span> &#123;</span><br><span class="line">uintptr_t indexed           : <span class="number">1</span>;</span><br><span class="line">uintptr_t has_assoc         : <span class="number">1</span>;</span><br><span class="line">uintptr_t has_cxx_dtor      : <span class="number">1</span>;</span><br><span class="line">uintptr_t shiftcls          : <span class="number">44</span>;</span><br><span class="line">uintptr_t magic             : <span class="number">6</span>;</span><br><span class="line">uintptr_t weakly_referenced : <span class="number">1</span>;</span><br><span class="line">uintptr_t deallocating      : <span class="number">1</span>;</span><br><span class="line">uintptr_t has_sidetable_rc  : <span class="number">1</span>;</span><br><span class="line">uintptr_t extra_rc          : <span class="number">8</span>;</span><br><span class="line">&#125;;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
-<blockquote>
-<p>介绍关于 <code>isa_t</code> 结构体的内容，你可以看<a href="https://github.com/Draveness/iOS-Source-Code-Analyze/blob/master/contents/objc/从%20NSObject%20的初始化了解%20isa.md" target="_blank" rel="noopener">从 NSObject 的初始化了解 isa</a> 关于 <code>isa_t</code> 的内容。</p>
-</blockquote>
-<h2 id="init-方法"><a href="#init-方法" class="headerlink" title="init 方法"></a>init 方法</h2><p><code>NSObject</code> 的 <code>- init</code> 方法只是调用了 <code>_objc_rootInit</code> 并返回了当前对象：</p>
-<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">- (<span class="keyword">id</span>)init &#123;</span><br><span class="line"><span class="keyword">return</span> _objc_rootInit(<span class="keyword">self</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">id</span> _objc_rootInit(<span class="keyword">id</span> obj) &#123;</span><br><span class="line"><span class="keyword">return</span> obj;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>在 iOS 中一个对象的初始化过程很符合直觉，只是分配内存空间、然后初始化 <code>isa_t</code> 结构体，其实现也并不复杂。</p>
-<blockquote>
-<p>参考资料: <a href="https://github.com/Draveness" target="_blank" rel="noopener">Draveness · Github</a></p>
-</blockquote>
-
+        <h2 id="运算符"><a href="#运算符" class="headerlink" title="运算符"></a>运算符</h2><ul>
+<li>“+”：可以用作连接符，因此当进行加减运算的时候要确保是两个数字类型。</li>
+<li>转换方法：可以用*，-，／任何一种运算符进行自动转换。</li>
+<li>“-”</li>
+<li>“*”</li>
+<li>“÷”</li>
+</ul>
+<h2 id="在js中动态添加元素样式的两种方式"><a href="#在js中动态添加元素样式的两种方式" class="headerlink" title="在js中动态添加元素样式的两种方式"></a>在js中动态添加元素样式的两种方式</h2><ol>
+<li>行间样式。</li>
+<li>给style标签添加innerHTML(但是有优先级的关系)
+        
+          <p class="article-more-link">
+            <a href="/2019/03/21/javascript-四/#more">Read More</a>
+          </p>
+        
       
-    </div>
+    </li></ol></div>
     <footer class="article-footer">
-      <a data-url="http://caofuqing.com/2018/11/18/iOS对象是如何初始化的/" data-id="cjw7ahwo600008r04hp6miavy" class="article-share-link">Share</a>
+      <a data-url="http://caofuqing.com/2019/03/21/javascript-四/" data-id="cjw7mwqq3000l1j04kt51na7l" class="article-share-link">Share</a>
       
       
     </footer>
@@ -241,12 +547,16 @@
 
 
   
-    <article id="post-iOS面试题整理" class="article article-type-post" itemscope itemprop="blogPost">
+    <article id="post-javascript-三" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
-    <a href="/2018/09/27/iOS面试题整理/" class="article-date">
-  <time datetime="2018-09-27T09:33:20.000Z" itemprop="datePublished">2018-09-27</time>
+    <a href="/2019/03/21/javascript-三/" class="article-date">
+  <time datetime="2019-03-21T08:43:48.000Z" itemprop="datePublished">2019-03-21</time>
 </a>
     
+  <div class="article-category">
+    <a class="article-category-link" href="/categories/JavaScript/">JavaScript</a>
+  </div>
+
   </div>
   <div class="article-inner">
     
@@ -255,7 +565,7 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2018/09/27/iOS面试题整理/">iOS面试题整理</a>
+      <a class="article-title" href="/2019/03/21/javascript-三/">javascript(三)</a>
     </h1>
   
 
@@ -263,100 +573,24 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <p>面试 iOS 开发时，切入点很重要，不同的切入点会导致不同的结果，没有找到合适的切入点也无法对应聘者有一个全面的了解。所以这份面试问题列表更多的是提供方向，没有固定的答案，而且可以根据应聘者的回应引出更多有意思深层次的讨论。</p>
-<p>如果有不错的问题，欢迎联系追加</p>
-<h2 id="一般性问题"><a href="#一般性问题" class="headerlink" title="一般性问题"></a>一般性问题</h2><ul>
-<li>最近这两天你有学到什么知识/技能么？</li>
-<li>最近有做过比较酷或者比较有挑战的项目么？</li>
-<li>最近看过的书/文章有哪些？</li>
-<li>如何向一个只接触过互联网的孩子解释「电视」？</li>
-<li>为什么要学习编程，编程对你而言的乐趣在哪儿？</li>
-<li>如果一个函数10次中有7次正确，3次错误，问题可能出现在哪里？</li>
-<li>自身最大优点是什么，怎么证明？</li>
-<li>有没有在 GitHub 上发布过开源代码，参与过开源项目？</li>
-<li>你最近遇到过的一个技术挑战是什么？怎么解决的？</li>
-<li>开发常用的工具有哪些？</li>
-<li>熟悉 CocoaPods 么？能大概讲一下工作原理么？</li>
-<li>最常用的版本控制工具是什么，能大概讲讲原理么？</li>
-<li>今年你最想掌握的一门技术是什么？为什么？目前已经做到了哪个程度？</li>
-<li>你一般是怎么用 Instruments 的？</li>
-<li>你一般是如何调试 Bug 的？</li>
-<li>你在你的项目中用到了哪些设计模式？</li>
-<li>如何实现单例，单例会有什么弊端？</li>
-<li>iOS 是如何管理内存的？</li>
-</ul>
-<h2 id="知识性问题"><a href="#知识性问题" class="headerlink" title="知识性问题"></a>知识性问题</h2><ul>
-<li>什么是响应链，它是怎么工作的？</li>
-<li>如何访问并修改一个类的私有属性？</li>
-<li>iOS Extension 是什么？能列举几个常用的 Extension 么？</li>
-<li>如何把一个包含自定义对象的数组序列化到磁盘？</li>
-<li>Apple Pay 是什么？它的大概工作流程是怎样的？</li>
-<li>iOS 的沙盒目录结构是怎样的？ App Bundle 里面都有什么？</li>
-<li>iOS 的签名机制大概是怎样的？</li>
-<li>iOS 7的多任务添加了哪两个新的 API? 各自的使用场景是什么？</li>
-<li>Objective-C 的 <code>class</code> 是如何实现的？<code>Selector</code> 是如何被转化为 C 语言的函数调用的？</li>
-<li><code>UIScrollView</code> 大概是如何实现的，它是如何捕捉、响应手势的？</li>
-<li>Objective-C 如何对已有的方法，添加自己的功能代码以实现类似记录日志这样的功能？</li>
-<li><code>+load</code> 和 <code>+initialize</code> 的区别是什么？</li>
-<li>如何让 Category 支持属性？</li>
-<li><code>NSOperation</code> 相比于 GCD 有哪些优势？</li>
-<li><code>strong</code> / <code>weak</code> / <code>unsafe_unretained</code> 的区别？</li>
-<li>如何为 Class 定义一个对外只读对内可读写的属性?</li>
-<li>Objective-C 中，meta-class 指的是什么？</li>
-<li><code>UIView</code> 和 <code>CALayer</code> 之间的关系？</li>
-<li><code>+[UIView animateWithDuration:animations:completion:]</code> 内部大概是如何实现的？</li>
-<li>什么时候会发生「隐式动画」？</li>
-<li>如何处理异步的网络请求？</li>
-<li><code>frame</code> 和 <code>bounds</code> 的区别是什么？</li>
-<li>如何把一张大图缩小为1/4大小的缩略图？</li>
-<li>一个 App 会处于哪些状态？</li>
-<li>Push Notification 是如何工作的？</li>
-<li>什么是 Runloop？</li>
-<li>Toll-Free Bridging 是什么？什么情况下会使用？</li>
-<li>当系统出现内存警告时会发生什么？</li>
-<li>什么是 <code>Protocol</code>，Delegate 一般是怎么用的？</li>
-<li>autorelease 对象在什么情况下会被释放？</li>
-<li>UIWebView 有哪些性能问题？有没有可替代的方案。</li>
-<li>为什么 NotificationCenter 要 removeObserver? 如何实现自动 remove?</li>
-<li>当 <code>TableView</code> 的 <code>Cell</code> 改变时，如何让这些改变以动画的形式呈现？</li>
-<li>什么是 <code>Method Swizzle</code>，什么情况下会使用？</li>
-</ul>
-<h2 id="经验类问题"><a href="#经验类问题" class="headerlink" title="经验类问题"></a>经验类问题</h2><ul>
-<li>为什么 <code>UIScrollView</code> 的滚动会导致 <code>NSTimer</code> 失效？</li>
-<li>为什么当 Core Animation 完成时，layer 又会恢复到原先的状态？</li>
-<li>你会如何存储用户的一些敏感信息，如登录的 token。</li>
-<li>有用过一些开源组件吧，能简单说几个么，大概说说它们的使用场景实现。</li>
-<li>什么时候会发生 <code>EXC BAD ACCESS</code> 异常？</li>
-<li>什么时候会使用 Core Graphics，有什么注意事项么？</li>
-<li>NSNotification 和 KVO 的使用场景？</li>
-<li>使用 Block 时需要注意哪些问题？</li>
-<li><code>performSelector:withObject:afterDelay:</code> 内部大概是怎么实现的，有什么注意事项么？</li>
-<li>如何播放 GIF 图片，有什么优化方案么？</li>
-<li>使用 <code>NSUserDefaults</code> 时，如何处理布尔的默认值？(比如返回 NO，不知道是真的 NO 还是没有设置过)</li>
-<li>有哪几种方式可以对图片进行缩放，使用 CoreGraphics 缩放时有什么注意事项？</li>
-<li>哪些途径可以让 ViewController 瘦下来？</li>
-<li>有哪些常见的 Crash 场景？</li>
-</ul>
-<h2 id="综合类问题"><a href="#综合类问题" class="headerlink" title="综合类问题"></a>综合类问题</h2><ul>
-<li>设计一个可以无限滚动并且支持自动滚动的 SlideShow。</li>
-<li>设计一个进度条。</li>
-<li>设计一套大文件（如上百M的视频）下载方案。</li>
-<li>如果让你来实现 <code>dispatch_once</code>，你会怎么做？</li>
-<li>设计一个类似 iOS 主屏可以下拉出现 Spotlight 的系统。(对 UIScrollView 的理解程度)</li>
-</ul>
-<h2 id="编程实现"><a href="#编程实现" class="headerlink" title="编程实现"></a>编程实现</h2><ul>
-<li>简述<a href="https://www.jianshu.com/p/2e1b3f54b4f3" target="_blank" rel="noopener">「Snakes and Ladders」</a>的实现思路(这道题比较容易阐述清楚，且难度适中)</li>
-</ul>
-<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><ul>
-<li><a href="http://way2ios.com/development/ios-development-2/iphone-interview-question-answers/" target="_blank" rel="noopener">http://way2ios.com/development/ios-development-2/iphone-interview-question-answers/</a></li>
-<li><a href="https://blackpixel.com/writing/2013/04/interview-questions-for-ios-and-mac-developers-1.html" target="_blank" rel="noopener">https://blackpixel.com/writing/2013/04/interview-questions-for-ios-and-mac-developers-1.html</a></li>
-<li><a href="https://github.com/CameronBanga/iOS-Developer-and-Designer-Interview-Questions" target="_blank" rel="noopener">https://github.com/CameronBanga/iOS-Developer-and-Designer-Interview-Questions</a></li>
-</ul>
-
+        <h2 id="数组"><a href="#数组" class="headerlink" title="数组"></a>数组</h2><ul>
+<li>数组[] Array是一种数据格式。</li>
+<li>数组中，每个数据之间用“,”隔开。</li>
+<li>获取数组中的其中一位，需要用下标。</li>
+<li>数组的长度 length。</li>
+<li>数组中可以存放任意类型的数据,但是一般为了代码的可读性极维护性，我每一个数组中，只存放一种类型的数据。</li>
+<li>当判断不大于这个数组的时候可以两种方式。</li>
+<li>i&gt;=arr.length-1;</li>
+<li>i&gt;arr.length
+        
+          <p class="article-more-link">
+            <a href="/2019/03/21/javascript-三/#more">Read More</a>
+          </p>
+        
       
-    </div>
+    </li></ul></div>
     <footer class="article-footer">
-      <a data-url="http://caofuqing.com/2018/09/27/iOS面试题整理/" data-id="cjw7ahwoa00018r04bnjgpvx8" class="article-share-link">Share</a>
+      <a data-url="http://caofuqing.com/2019/03/21/javascript-三/" data-id="cjw7mwqpt00091j04rar4foov" class="article-share-link">Share</a>
       
       
     </footer>
@@ -367,12 +601,24 @@
 
   
 
+
+  <nav id="page-nav">
+    
+    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="extend next" rel="next" href="/page/2/">Next &raquo;</a>
+  </nav>
 
 </section>
         
           <aside id="sidebar">
   
     
+  <div class="widget-wrap">
+    <h3 class="widget-title">Categories</h3>
+    <div class="widget">
+      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/JavaScript/">JavaScript</a></li><li class="category-list-item"><a class="category-list-link" href="/categories/iOS/">iOS</a></li></ul>
+    </div>
+  </div>
+
 
   
     
@@ -384,7 +630,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">Archives</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/02/">February 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/11/">November 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/05/">May 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/03/">March 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/02/">February 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/11/">November 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li></ul>
     </div>
   </div>
 
@@ -397,15 +643,23 @@
       <ul>
         
           <li>
-            <a href="/2019/02/20/成熟的夜间模式方案/">成熟的夜间模式方案</a>
+            <a href="/2019/05/28/iOS-源代码分析-Masonry/">iOS 源代码分析 --- Masonry</a>
           </li>
         
           <li>
-            <a href="/2018/11/18/iOS对象是如何初始化的/">iOS对象是如何初始化的</a>
+            <a href="/2019/03/21/javascript-十一/">javascript(十一)</a>
           </li>
         
           <li>
-            <a href="/2018/09/27/iOS面试题整理/">iOS面试题整理</a>
+            <a href="/2019/03/21/javascript-十/">javascript(十)</a>
+          </li>
+        
+          <li>
+            <a href="/2019/03/21/javascript-九/">javascript(九)</a>
+          </li>
+        
+          <li>
+            <a href="/2019/03/21/javascript-八/">javascript(八)</a>
           </li>
         
       </ul>
