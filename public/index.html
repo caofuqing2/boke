@@ -70,6 +70,109 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-成熟的夜间模式方案" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2019/02/20/成熟的夜间模式方案/" class="article-date">
+  <time datetime="2019-02-20T04:08:14.000Z" itemprop="datePublished">2019-02-20</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/02/20/成熟的夜间模式方案/">成熟的夜间模式方案</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p> <a href="https://github.com/Draveness/DKNightVersion" target="_blank" rel="noopener">DKNightVersion</a> 摘自这个框架的设计者。</p>
+<p>其实夜间模式的实现就是相当于<strong>多主题加颜色管理</strong>。而最新版本的 <a href="https://github.com/Draveness/DKNightVersion" target="_blank" rel="noopener">DKNightVersion</a> 已经很好的解决了这个问题。</p>
+<p>在正式介绍目前版本的实现之前，我会先简单介绍一下 1.0 时代的 DKNightVersion 的实现，为各位读者带来一些新的思路，也确实想梳理一下这个框架是如何演变的。</p>
+<blockquote>
+<p>我们会以对 <code>backgroundColor</code> 为例说明整个框架的工作原理。</p>
+</blockquote>
+<p align="center"><br><img src="https://raw.githubusercontent.com/Draveness/DKNightVersion/master/images/DKNightVersion.gif"><br></p>
+
+<h2 id="方法调剂的版本"><a href="#方法调剂的版本" class="headerlink" title="方法调剂的版本"></a>方法调剂的版本</h2><p>如何在不改变原有的架构，甚至不改变原有的代码的基础上，为应用优雅地添加夜间模式成为很多开发者不得不面对的问题。这也是 1.0 时代的 DKNightVersion 想要实现的目标。</p>
+<p>其核心思路就是<strong>使用方法调剂修改 <code>backgroundColor</code> 的存取方法</strong>。</p>
+<h3 id="使用-nightBackgroundColor"><a href="#使用-nightBackgroundColor" class="headerlink" title="使用 nightBackgroundColor"></a>使用 nightBackgroundColor</h3><p>在思考之后，我想到，想要在不改动原有代码的基础上实现夜间模式只能通过在<strong>分类</strong>中添加 <code>nightBackgroundColor</code> 属性，并且使用方法调剂改变 <code>backgroundColor</code> 的 setter 方法。</p>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">- (<span class="keyword">void</span>)hook_setBackgroundColor:(<span class="built_in">UIColor</span>*)backgroundColor &#123;</span><br><span class="line"><span class="keyword">if</span> ([DKNightVersionManager currentThemeVersion] == DKThemeVersionNormal) &#123;</span><br><span class="line">[<span class="keyword">self</span> setNormalBackgroundColor:backgroundColor];</span><br><span class="line">&#125;</span><br><span class="line">[<span class="keyword">self</span> hook_setBackgroundColor:backgroundColor];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在当前主题为 <code>DKThemeVersionNormal</code> 时，将颜色保存至 <code>normalBackgroundColor</code> 中，然后再调用原 <code>backgroundColor</code> 的 setter 方法，更新视图的颜色。</p>
+<h3 id="DKNightVersionManager"><a href="#DKNightVersionManager" class="headerlink" title="DKNightVersionManager"></a>DKNightVersionManager</h3><p>这里只解决了颜色设置的问题，下面会说明，如果在主题改变时，实时更新颜色，而不用重新进入当前页面。</p>
+<p>整个 DKNightVersion 都是由一个 <code>DKNightVersionManager</code> 的单例来管理的，而它的主要工作就是负责<strong>改变应用的主题</strong>、并在主题改变时<strong>通知其它视图更新颜色</strong>：</p>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">- (<span class="keyword">void</span>)changeColor:(<span class="keyword">id</span> &lt;DKNightVersionChangeColorProtocol&gt;)object &#123;</span><br><span class="line"><span class="keyword">if</span> ([object respondsToSelector:<span class="keyword">@selector</span>(changeColor)]) &#123;</span><br><span class="line">[object changeColor];</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">if</span> ([object respondsToSelector:<span class="keyword">@selector</span>(subviews)]) &#123;</span><br><span class="line"><span class="keyword">if</span> (![object subviews]) &#123;</span><br><span class="line"><span class="comment">// Basic case, do nothing.</span></span><br><span class="line"><span class="keyword">return</span>;</span><br><span class="line">&#125; <span class="keyword">else</span> &#123;</span><br><span class="line"><span class="keyword">for</span> (<span class="keyword">id</span> subview <span class="keyword">in</span> [object subviews]) &#123;</span><br><span class="line"><span class="comment">// recursive darken all the subviews of current view.</span></span><br><span class="line">[<span class="keyword">self</span> changeColor:subview];</span><br><span class="line"><span class="keyword">if</span> ([subview respondsToSelector:<span class="keyword">@selector</span>(changeColor)]) &#123;</span><br><span class="line">[subview changeColor];</span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>如果主题更新，那么就会递归地调用 <code>changeColor</code> 方法，刷新全部的视图颜色，而这个方法的实现比较简单：</p>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">- (<span class="keyword">void</span>)changeColor &#123;</span><br><span class="line"><span class="keyword">if</span> ([DKNightVersionManager currentThemeVersion] == DKThemeVersionNormal) &#123;</span><br><span class="line"><span class="keyword">self</span>.backgroundColor = <span class="keyword">self</span>.normalBackgroundColor;</span><br><span class="line">&#125; <span class="keyword">else</span> &#123;</span><br><span class="line"><span class="keyword">self</span>.backgroundColor = <span class="keyword">self</span>.nightBackgroundColor;</span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上面就是整个框架在 1.0 版本时的实现思路。不过这个版本的 DKNightVersion 在实际应用中会有比较多的问题：</p>
+<ol>
+<li>在高速滚动的 <code>scrollView</code> 上面来回切换夜间模式，会出现颜色错乱的问题</li>
+<li>由于对 <code>backgroundColor</code> 属性进行<strong>不合适的</strong>方法调剂，其行为无法预测，比如：在设置颜色后，再取出，不一定与设置时传入的颜色相同</li>
+<li>无法适配第三方 UI 控件</li>
+</ol>
+<h2 id="使用色表的版本"><a href="#使用色表的版本" class="headerlink" title="使用色表的版本"></a>使用色表的版本</h2><p>为了解决 1.0 中的各种问题，我决定在 2.0 版本中放弃对 <code>nightBackgroundColor</code> 的使用，并且重新设计底层的实现，转而使用更为<strong>稳定</strong>、<strong>安全</strong>的方法实现夜间模式，先看一下效果图：</p>
+<p align="center"><br><img src="https://raw.githubusercontent.com/Draveness/DKNightVersion/master/images/DKNightVersion.gif"><br></p><br><p align="center"><br><em>新的实现不仅能够支持夜间模式，而且能够支持多主题。</em><br></p>
+
+<h3 id="DKColorPicker"><a href="#DKColorPicker" class="headerlink" title="DKColorPicker"></a>DKColorPicker</h3><p>与上一个版本实现上的不同，在 2.0 中删除了全部的 <code>nightBackgroundColor</code>，使用一个名为 <code>dk_backgroundColorPicker</code> 的属性取代它。</p>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">@property</span> (<span class="keyword">nonatomic</span>, <span class="keyword">copy</span>) DKColorPicker dk_backgroundColorPicker;</span><br></pre></td></tr></table></figure>
+<p>这个属性其实就是一个 block，它接收参数 <code>DKThemeVersion *themeVersion</code>，但是会返回一个 <code>UIColor *</code>：</p>
+<blockquote>
+<p>在第一次传入 picker 或者每次主题改变时，都会将当前主题 <code>DKThemeVersion</code> 传入 picker 并执行，然后，将得到的 <code>UIColor</code> 赋值给对应的属性 <code>backgroundColor</code> 更新视图颜色。</p>
+</blockquote>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="built_in">UIColor</span> *(^DKColorPicker)(DKThemeVersion *themeVersion);</span><br></pre></td></tr></table></figure>
+<p>比如下面使用 <code>DKColorPickerWithRGB</code> 创建一个临时的 <code>DKColorPicker</code>：</p>
+<ol>
+<li>在 <code>DKThemeVersionNormal</code> 时返回 <code>0xffffff</code></li>
+<li>在 <code>DKThemeVersionNight</code> 时返回 <code>0x343434</code></li>
+<li>在自定义的主题下返回 <code>0xfafafa</code> （这里的顺序与色表中主题的顺序有关）</li>
+</ol>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cell.dk_backgroundColorPicker = DKColorPickerWithRGB(<span class="number">0xffffff</span>, <span class="number">0x343434</span>, <span class="number">0xfafafa</span>);</span><br></pre></td></tr></table></figure>
+<p>同时，每一个对象还持有一个 <code>pickers</code> 数组，来存储自己的全部 <code>DKColorPicker</code>：</p>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">@interface</span> <span class="title">NSObject</span> ()</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">@property</span> (<span class="keyword">nonatomic</span>, <span class="keyword">strong</span>) <span class="built_in">NSMutableDictionary</span>&lt;<span class="built_in">NSString</span> *, DKColorPicker&gt; *pickers;</span><br><span class="line"></span><br><span class="line"><span class="keyword">@end</span></span><br></pre></td></tr></table></figure>
+<p>在第一次使用这个属性时，当前对象注册为 <code>DKNightVersionThemeChangingNotificaiton</code> 通知的观察者。</p>
+<p>在每次收到通知时，都会调用 <code>night_update</code> 方法，将当前主题传入 <code>DKColorPicker</code>，并再次执行，并将结果传入对应的属性 <code>[self performSelector:sel withObject:result]</code>。</p>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">- (<span class="keyword">void</span>)night_updateColor &#123;</span><br><span class="line">[<span class="keyword">self</span>.pickers enumerateKeysAndObjectsUsingBlock:^(<span class="built_in">NSString</span> * _Nonnull selector, DKColorPicker  _Nonnull picker, <span class="built_in">BOOL</span> * _Nonnull stop) &#123;</span><br><span class="line">SEL sel = <span class="built_in">NSSelectorFromString</span>(selector);</span><br><span class="line"><span class="keyword">id</span> result = picker(<span class="keyword">self</span>.dk_manager.themeVersion);</span><br><span class="line">[<span class="built_in">UIView</span> animateWithDuration:DKNightVersionAnimationDuration</span><br><span class="line">animations:^&#123;</span><br><span class="line"><span class="meta">#pragma clang diagnostic push</span></span><br><span class="line"><span class="meta">#pragma clang diagnostic ignored <span class="meta-string">"-Warc-performSelector-leaks"</span></span></span><br><span class="line">[<span class="keyword">self</span> performSelector:sel withObject:result];</span><br><span class="line"><span class="meta">#pragma clang diagnostic pop</span></span><br><span class="line">&#125;];</span><br><span class="line">&#125;];</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>也就是说，在每次改变主题的时候，都会发出通知。</p>
+<h3 id="DKColorTable"><a href="#DKColorTable" class="headerlink" title="DKColorTable"></a>DKColorTable</h3><p>虽然我们在上面临时创建了一些 <code>DKColorPicker</code>。不过在 <code>DKNightVersion</code> 中，我更推荐使用色表，来减少相同的 <code>DKColorPicker</code> 的创建，并且能够更好地管理整个应用中的颜色：</p>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">NORMAL   NIGHT    RED</span><br><span class="line"><span class="meta">#ffffff  #343434  #fafafa BG</span></span><br><span class="line"><span class="meta">#aaaaaa  #313131  #aaaaaa SEP</span></span><br><span class="line"><span class="meta">#0000ff  #ffffff  #fa0000 TINT</span></span><br><span class="line"><span class="meta">#000000  #ffffff  #000000 TEXT</span></span><br><span class="line"><span class="meta">#ffffff  #444444  #ffffff BAR</span></span><br></pre></td></tr></table></figure>
+<p>上面就是默认色表文件 <code>DKColorTable.txt</code> 中的内容，其中，第一行表示主题，<code>NORMAL</code> 主题必须存在，而且必须为第一列，而最右面的 <code>BG</code>、<code>SEP</code> 就是对应 <code>DKColorPicker</code> 的 key。</p>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">self</span>.tableView.dk_backgroundColorPicker =  DKColorPickerWithKey(BG);</span><br></pre></td></tr></table></figure>
+<p>在使用时，上面的代码就相当于返回了一个在 <code>NORMAL</code> 时返回 <code>#ffffff</code>、<code>NIGHT</code> 时返回 <code>#343434</code> 以及 <code>RED</code> 时返回 <code>#fafafa</code> 的 <code>DKColorPicker</code>。</p>
+<h3 id="pickerify"><a href="#pickerify" class="headerlink" title="pickerify"></a>pickerify</h3><p>虽然说，我们使用色表以及 <code>DKColorPicker</code> 解决了，但是，到目前为止我们还没有解决第三方框架的问题。</p>
+<p>比如我们使用了某个第三方框架，或者自己添加了某个 <code>color</code> 属性，比如说：</p>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">@interface</span> <span class="title">DKView</span> ()</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">@property</span> (<span class="keyword">nonatomic</span>, <span class="keyword">strong</span>) <span class="built_in">UIColor</span> *weirdColor;</span><br><span class="line"></span><br><span class="line"><span class="keyword">@end</span></span><br></pre></td></tr></table></figure>
+<p><code>weirdColor</code> 并没有对应的 <code>DKColorPicker</code>，但是，我们可以通过 <code>pickerify</code> 在想要使用 <code>dk_weirdColorPicker</code> 的地方生成这个对应的 picker：</p>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">@pickerify(DKView, weirdColor);</span><br></pre></td></tr></table></figure>
+<p>然后，我们就可以使用 <code>dk_weirdColorPicker</code> 属性了：</p>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">view.dk_weirdColorPicker = DKColorPickerWithKey(BG);</span><br></pre></td></tr></table></figure>
+<p><code>pickerify</code> 其实是一个宏：</p>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#define pickerify(KLASS, PROPERTY) interface \</span></span><br><span class="line">KLASS (Night) \</span><br><span class="line"><span class="keyword">@property</span> (<span class="keyword">nonatomic</span>, <span class="keyword">copy</span>, <span class="keyword">setter</span> = dk_set <span class="meta">## PROPERTY ## Picker:) DKColorPicker dk_ ## PROPERTY ## Picker; \</span></span><br><span class="line"><span class="keyword">@end</span> \</span><br><span class="line"><span class="class"><span class="keyword">@interface</span> \</span></span><br><span class="line">KLASS () \</span><br><span class="line"><span class="keyword">@property</span> (<span class="keyword">nonatomic</span>, <span class="keyword">strong</span>) <span class="built_in">NSMutableDictionary</span>&lt;<span class="built_in">NSString</span> *, DKColorPicker&gt; *pickers; \</span><br><span class="line"><span class="keyword">@end</span> \</span><br><span class="line"><span class="class"><span class="keyword">@implementation</span> \</span></span><br><span class="line">KLASS (Night) \</span><br><span class="line">- (DKColorPicker)dk_ <span class="meta">## PROPERTY ## Picker &#123; \</span></span><br><span class="line"><span class="keyword">return</span> objc_getAssociatedObject(<span class="keyword">self</span>, <span class="keyword">@selector</span>(dk_ <span class="meta">## PROPERTY ## Picker)); \</span></span><br><span class="line">&#125; \</span><br><span class="line">- (<span class="keyword">void</span>)dk_set <span class="meta">## PROPERTY ## Picker:(DKColorPicker)picker &#123; \</span></span><br><span class="line">objc_setAssociatedObject(<span class="keyword">self</span>, <span class="keyword">@selector</span>(dk_ <span class="meta">## PROPERTY ## Picker), picker, OBJC_ASSOCIATION_COPY_NONATOMIC); \</span></span><br><span class="line">[<span class="keyword">self</span> setValue:picker(<span class="keyword">self</span>.dk_manager.themeVersion) forKeyPath:@keypath(<span class="keyword">self</span>, PROPERTY)];\</span><br><span class="line">[<span class="keyword">self</span>.pickers setValue:[picker <span class="keyword">copy</span>] forKey:_DKSetterWithPROPERTYerty(@<span class="meta">#PROPERTY)]; \</span></span><br><span class="line">&#125; \</span><br><span class="line"><span class="keyword">@end</span></span><br></pre></td></tr></table></figure>
+<p>这个宏根据传入的类和属性名，为我们生成了对应 <code>picker</code> 的存取方法，它也可以说是一种元编程的手段。</p>
+<blockquote>
+<p>这里生成的 setter 方法不是标准意义上的驼峰命名法 <code>dk_setweirdColorPicker:</code>，因为我不知道怎么才能让大写首字母之后的属性添加到这里（如果各位读者有解决方案，欢迎提 PR 或者 issue）。</p>
+</blockquote>
+<h2 id="嵌入式-Ruby"><a href="#嵌入式-Ruby" class="headerlink" title="嵌入式 Ruby"></a>嵌入式 Ruby</h2><p>由于框架中很多的代码，都是重复的，所以在这里使用了<strong>嵌入式 Ruby 模板</strong>来生成对应的文件 <code>color.m.irb</code>：</p>
+<figure class="highlight objectivec"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="comment">//  &lt;%= klass.name %&gt;+Night.m</span></span><br><span class="line"><span class="comment">//  &lt;%= klass.name %&gt;+Night</span></span><br><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="comment">//  Copyright (c) 2015 Draveness. All rights reserved.</span></span><br><span class="line"><span class="comment">//</span></span><br><span class="line"><span class="comment">//  These files are generated by ruby script, if you want to modify code</span></span><br><span class="line"><span class="comment">//  in this file, you are supposed to update the ruby code, run it and</span></span><br><span class="line"><span class="comment">//  test it. And finally open a pull request.</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#import <span class="meta-string">"&lt;%= klass.name %&gt;+Night.h"</span></span></span><br><span class="line"><span class="meta">#import <span class="meta-string">"DKNightVersionManager.h"</span></span></span><br><span class="line"><span class="meta">#import <span class="meta-string">&lt;objc/runtime.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">@interface</span> &lt;%= <span class="title">klass</span>.<span class="title">name</span> %&gt; ()</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">@property</span> (<span class="keyword">nonatomic</span>, <span class="keyword">strong</span>) <span class="built_in">NSMutableDictionary</span>&lt;<span class="built_in">NSString</span> *, DKColorPicker&gt; *pickers;</span><br><span class="line"></span><br><span class="line"><span class="keyword">@end</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">@implementation</span> &lt;%= <span class="title">klass</span>.<span class="title">name</span> %&gt; (<span class="title">Night</span>)</span></span><br><span class="line"></span><br><span class="line">&lt;% klass.properties.each <span class="keyword">do</span> |property| %&gt;&lt;%= <span class="string">""</span><span class="string">"</span></span><br><span class="line"><span class="string">- (DKColorPicker)dk_#&#123;property.name&#125;Picker &#123;</span></span><br><span class="line"><span class="string">return objc_getAssociatedObject(self, @selector(dk_#&#123;property.name&#125;Picker));</span></span><br><span class="line"><span class="string">&#125;</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">- (void)dk_set#&#123;property.cap_name&#125;Picker:(DKColorPicker)picker &#123;</span></span><br><span class="line"><span class="string">objc_setAssociatedObject(self, @selector(dk_#&#123;property.name&#125;Picker), picker, OBJC_ASSOCIATION_COPY_NONATOMIC);</span></span><br><span class="line"><span class="string">self.#&#123;property.name&#125; = picker(self.dk_manager.themeVersion);</span></span><br><span class="line"><span class="string">[self.pickers setValue:[picker copy] forKey:@\"#&#123;property.setter&#125;\"];</span></span><br><span class="line"><span class="string">&#125;</span></span><br><span class="line"><span class="string">"</span><span class="string">""</span> %&gt;&lt;% end %&gt;</span><br><span class="line"></span><br><span class="line"><span class="keyword">@end</span></span><br></pre></td></tr></table></figure>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://caofuqing.com/2019/02/20/成熟的夜间模式方案/" data-id="cjw7ahwoc00028r04rrsd8r9x" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
     <article id="post-iOS对象是如何初始化的" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2018/11/18/iOS对象是如何初始化的/" class="article-date">
@@ -128,7 +231,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://caofuqing.com/2018/11/18/iOS对象是如何初始化的/" data-id="cjw793xdt0000wo04h5er8nkn" class="article-share-link">Share</a>
+      <a data-url="http://caofuqing.com/2018/11/18/iOS对象是如何初始化的/" data-id="cjw7ahwo600008r04hp6miavy" class="article-share-link">Share</a>
       
       
     </footer>
@@ -253,7 +356,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://caofuqing.com/2018/09/27/iOS面试题整理/" data-id="cjw793xe90001wo04avxinhc3" class="article-share-link">Share</a>
+      <a data-url="http://caofuqing.com/2018/09/27/iOS面试题整理/" data-id="cjw7ahwoa00018r04bnjgpvx8" class="article-share-link">Share</a>
       
       
     </footer>
@@ -281,7 +384,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">Archives</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/11/">November 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2019/02/">February 2019</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/11/">November 2018</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2018/09/">September 2018</a></li></ul>
     </div>
   </div>
 
@@ -292,6 +395,10 @@
     <h3 class="widget-title">Recent Posts</h3>
     <div class="widget">
       <ul>
+        
+          <li>
+            <a href="/2019/02/20/成熟的夜间模式方案/">成熟的夜间模式方案</a>
+          </li>
         
           <li>
             <a href="/2018/11/18/iOS对象是如何初始化的/">iOS对象是如何初始化的</a>
