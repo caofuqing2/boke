@@ -80,8 +80,9 @@ theme: landscape
 ## Docs: https://hexo.io/docs/deployment.html
 deploy:
   type: git
-  repo: https://github.com/caofuqing/www.caofuqing.com.git
+#  repo: https://github.com/caofuqing/www.caofuqing.com.git
+  repo: git@e.coding.net:Talking/caofuqing.coding.me.git
   repository:
-    github: https://github.com/caofuqing/www.caofuqing.com.git
+#    github: https://github.com/caofuqing/www.caofuqing.com.git
     coding: git@e.coding.net:Talking/caofuqing.coding.me.git
   branch: master
