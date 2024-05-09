@@ -14,7 +14,7 @@ createTime: 2018
 
 # URL
 ## If your site is put in a subdirectory, set url as 'http://yoursite.com/child' and root as '/child/'
-url: http://caofuqing.com
+url: http://caofuqing.top
 root: /
 permalink: :year/:month/:day/:title/
 permalink_defaults:
@@ -81,10 +81,12 @@ theme: landscape
 deploy:
   type: git
 #  repo: https://github.com/caofuqing/www.caofuqing.com.git
-  repo: git@e.coding.net:Talking/caofuqing.coding.me.git
+  # repo: git@e.coding.net:Talking/caofuqing.coding.me.git
+  repo: git@github.com:caofuqing2/caofuqing2.git
 #  repo: https://gitee.com/Talking/www.caofuqing.com.git
   repository:
-#    github: https://github.com/caofuqing/www.caofuqing.com.git
-    coding: git@e.coding.net:Talking/caofuqing.coding.me.git
+    github: git@github.com:caofuqing2/caofuqing2.git
+   # github: https://github.com/caofuqing/www.caofuqing.com.git
+#     coding: git@e.coding.net:Talking/caofuqing.coding.me.git
 #      gitee: https://gitee.com/Talking/www.caofuqing.com.git
   branch: master
